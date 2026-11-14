@@ -1,0 +1,468 @@
+{
+  "info": {
+    "_postman_id": "b7a3f2c1-6d54-4e2b-9c8f-1a2b3c4d5e6f",
+    "name": "reservation-system - API de reservas de salas",
+    "description": "Coleccion de pruebas de la API REST de reserva de salas.\n\nFlujo recomendado: ejecutar la carpeta '00 Salud' y luego '01 Salas' (crea la sala y guarda {{roomId}}), despues '02 Reservas'.\n\nCasos de error esperados: 409 al duplicar horario, 400 con detalle por campo en payload invalido, 401 sin credenciales en operaciones de escritura.\n\nImporta tambien 'postman_environment_local.json' para tener las variables ({{baseUrl}}, {{adminUser}}, {{adminPass}}, {{roomId}}, {{reservationId}}).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "basic",
+    "basic": [
+      { "key": "username", "value": "{{adminUser}}", "type": "string" },
+      { "key": "password", "value": "{{adminPass}}", "type": "string" }
+    ]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "adminUser", "value": "admin" },
+    { "key": "adminPass", "value": "admin123" },
+    { "key": "user", "value": "user" },
+    { "key": "userPass", "value": "user123" }
+  ],
+  "item": [
+    {
+      "name": "00 Salud",
+      "item": [
+        {
+          "name": "Health del servicio",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/actuator/health", "host": ["{{baseUrl}}"], "path": ["actuator", "health"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 - servicio arriba', function () { pm.response.to.have.status(200); });",
+                  "pm.test('estado UP', function () { pm.expect(pm.response.json().status).to.eql('UP'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "01 Salas",
+      "item": [
+        {
+          "name": "Crear sala (201)",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "basic", "basic": [ { "key": "username", "value": "{{adminUser}}", "type": "string" }, { "key": "password", "value": "{{adminPass}}", "type": "string" } ] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sala Postman {{$randomInt}}\",\n  \"capacity\": 10,\n  \"location\": \"Piso 5 - Postman\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/rooms", "host": ["{{baseUrl}}"], "path": ["api", "rooms"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 - sala creada', function () { pm.response.to.have.status(201); });",
+                  "pm.test('devuelve id', function () { pm.expect(pm.response.json().id).to.be.a('number'); });",
+                  "pm.collectionVariables.set('roomId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar salas (200, sin auth)",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/rooms", "host": ["{{baseUrl}}"], "path": ["api", "rooms"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 - listado publico', function () { pm.response.to.have.status(200); });",
+                  "pm.test('devuelve un arreglo no vacio', function () { pm.expect(pm.response.json()).to.be.an('array').that.is.not.empty; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar sala por id (200)",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/rooms/{{roomId}}", "host": ["{{baseUrl}}"], "path": ["api", "rooms", "{{roomId}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('200 - sala encontrada', function () { pm.response.to.have.status(200); });"]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 Reservas",
+      "item": [
+        {
+          "name": "Crear reserva (201)",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "basic", "basic": [ { "key": "username", "value": "{{user}}", "type": "string" }, { "key": "password", "value": "{{userPass}}", "type": "string" } ] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomId\": {{roomId}},\n  \"responsable\": \"Miguel Pina\",\n  \"responsableEmail\": \"mpina@btech.com.mx\",\n  \"startTime\": \"2032-04-15T10:00:00\",\n  \"endTime\": \"2032-04-15T11:00:00\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/reservations", "host": ["{{baseUrl}}"], "path": ["api", "reservations"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 - reserva creada', function () { pm.response.to.have.status(201); });",
+                  "pm.test('estado ACTIVA', function () { pm.expect(pm.response.json().status).to.eql('ACTIVA'); });",
+                  "pm.collectionVariables.set('reservationId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reserva duplicada en el mismo horario (409)",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "basic", "basic": [ { "key": "username", "value": "{{user}}", "type": "string" }, { "key": "password", "value": "{{userPass}}", "type": "string" } ] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomId\": {{roomId}},\n  \"responsable\": \"Otra Persona\",\n  \"startTime\": \"2032-04-15T10:00:00\",\n  \"endTime\": \"2032-04-15T11:00:00\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/reservations", "host": ["{{baseUrl}}"], "path": ["api", "reservations"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 - sala ocupada', function () { pm.response.to.have.status(409); });",
+                  "pm.test('mensaje de conflicto', function () { pm.expect(pm.response.json().message).to.include('ya est'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reserva invalida (400 con detalle por campo)",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "basic", "basic": [ { "key": "username", "value": "{{user}}", "type": "string" }, { "key": "password", "value": "{{userPass}}", "type": "string" } ] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomId\": null,\n  \"responsable\": \"\",\n  \"startTime\": null,\n  \"endTime\": null\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/reservations", "host": ["{{baseUrl}}"], "path": ["api", "reservations"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 - datos invalidos', function () { pm.response.to.have.status(400); });",
+                  "pm.test('detalla los campos con error', function () {",
+                  "  var errors = pm.response.json().fieldErrors;",
+                  "  pm.expect(errors).to.have.property('roomId');",
+                  "  pm.expect(errors).to.have.property('responsable');",
+                  "  pm.expect(errors).to.have.property('startTime');",
+                  "  pm.expect(errors).to.have.property('endTime');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar reservas filtradas por sala y fecha (200)",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reservations?roomId={{roomId}}&date=2032-04-15&page=0&size=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reservations"],
+              "query": [
+                { "key": "roomId", "value": "{{roomId}}", "description": "Filtra por sala" },
+                { "key": "date", "value": "2032-04-15", "description": "Filtra por dia (YYYY-MM-DD)" },
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 - listado paginado', function () { pm.response.to.have.status(200); });",
+                  "pm.test(",
+                  "  'devuelve la reserva creada en ese dia', function () {",
+                  "    var body = pm.response.json();",
+                  "    pm.expect(body.content).to.be.an('array').that.is.not.empty;",
+                  "    pm.expect(body.totalElements).to.be.above(0);",
+                  "    pm.expect(body.content[0].roomId).to.eql(Number(pm.collectionVariables.get('roomId')));",
+                  "  });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar reservas de otra fecha (200, vacio)",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reservations?date=2031-01-01",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reservations"],
+              "query": [{ "key": "date", "value": "2031-01-01" }]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 - sin resultados', function () { pm.response.to.have.status(200); });",
+                  "pm.test('totalElements en cero', function () { pm.expect(pm.response.json().totalElements).to.eql(0); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 Cancelacion",
+      "item": [
+        {
+          "name": "Crear reserva para cancelar (201)",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "basic", "basic": [ { "key": "username", "value": "{{user}}", "type": "string" }, { "key": "password", "value": "{{userPass}}", "type": "string" } ] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomId\": {{roomId}},\n  \"responsable\": \"Patricia\",\n  \"startTime\": \"2032-04-16T13:00:00\",\n  \"endTime\": \"2032-04-16T14:00:00\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/reservations", "host": ["{{baseUrl}}"], "path": ["api", "reservations"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 - reserva creada', function () { pm.response.to.have.status(201); });",
+                  "pm.collectionVariables.set('reservationToCancel', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancelar reserva (200)",
+          "request": {
+            "method": "DELETE",
+            "auth": { "type": "basic", "basic": [ { "key": "username", "value": "{{user}}", "type": "string" }, { "key": "password", "value": "{{userPass}}", "type": "string" } ] },
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/reservations/{{reservationToCancel}}", "host": ["{{baseUrl}}"], "path": ["api", "reservations", "{{reservationToCancel}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 - reserva cancelada', function () { pm.response.to.have.status(200); });",
+                  "pm.test('estado CANCELADA', function () { pm.expect(pm.response.json().status).to.eql('CANCELADA'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancelar dos veces la misma reserva (409)",
+          "request": {
+            "method": "DELETE",
+            "auth": { "type": "basic", "basic": [ { "key": "username", "value": "{{user}}", "type": "string" }, { "key": "password", "value": "{{userPass}}", "type": "string" } ] },
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/reservations/{{reservationToCancel}}", "host": ["{{baseUrl}}"], "path": ["api", "reservations", "{{reservationToCancel}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('409 - ya estaba cancelada', function () { pm.response.to.have.status(409); });"]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 Autenticacion y errores",
+      "item": [
+        {
+          "name": "Crear sala sin credenciales (401)",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Sala Sin Auth\",\n  \"capacity\": 4\n}" },
+            "url": { "raw": "{{baseUrl}}/api/rooms", "host": ["{{baseUrl}}"], "path": ["api", "rooms"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('401 - credenciales requeridas', function () { pm.response.to.have.status(401); });"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear reserva sin credenciales (401)",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomId\": {{roomId}},\n  \"responsable\": \"Sin Auth\",\n  \"startTime\": \"2032-04-17T09:00:00\",\n  \"endTime\": \"2032-04-17T10:00:00\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/reservations", "host": ["{{baseUrl}}"], "path": ["api", "reservations"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('401 - credenciales requeridas', function () { pm.response.to.have.status(401); });"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancelar reserva sin credenciales (401)",
+          "request": {
+            "method": "DELETE",
+            "auth": { "type": "noauth" },
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/reservations/{{reservationToCancel}}", "host": ["{{baseUrl}}"], "path": ["api", "reservations", "{{reservationToCancel}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('401 - credenciales requeridas', function () { pm.response.to.have.status(401); });"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sala inexistente (404)",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/rooms/999999", "host": ["{{baseUrl}}"], "path": ["api", "rooms", "999999"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('404 - recurso inexistente', function () { pm.response.to.have.status(404); });"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Nombre de sala duplicado (400)",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "basic", "basic": [ { "key": "username", "value": "{{adminUser}}", "type": "string" }, { "key": "password", "value": "{{adminPass}}", "type": "string" } ] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Sala Ada\",\n  \"capacity\": 8\n}" },
+            "url": { "raw": "{{baseUrl}}/api/rooms", "host": ["{{baseUrl}}"], "path": ["api", "rooms"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 - nombre duplicado', function () { pm.response.to.have.status(400); });",
+                  "pm.test('mensaje de duplicado', function () { pm.expect(pm.response.json().message).to.include('Ya existe'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rango horario invalido: inicio posterior al fin (400)",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "basic", "basic": [ { "key": "username", "value": "{{user}}", "type": "string" }, { "key": "password", "value": "{{userPass}}", "type": "string" } ] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomId\": {{roomId}},\n  \"responsable\": \"Rango Malo\",\n  \"startTime\": \"2032-04-18T12:00:00\",\n  \"endTime\": \"2032-04-18T11:00:00\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/reservations", "host": ["{{baseUrl}}"], "path": ["api", "reservations"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 - rango horario invalido', function () { pm.response.to.have.status(400); });",
+                  "pm.test('mensaje de regla de negocio', function () { pm.expect(pm.response.json().message).to.include('anterior'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
