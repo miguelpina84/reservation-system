@@ -15,6 +15,7 @@ services:
 
   app:
     build: .
+    image: reservation-system:ci
     ports:
       - "8080:8080"
     environment:
@@ -22,6 +23,25 @@ services:
       DB_URL: jdbc:postgresql://postgres:5432/reservationdb
       DB_USERNAME: reservation
       DB_PASSWORD: reservation
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
     depends_on:
       postgres:
         condition: service_healthy
+
+  # Prueba de carga: docker compose --profile load up --build
+  k6:
+    image: grafana/k6:0.53.0
+    profiles: ["load"]
+    volumes:
+      - ./performance:/scripts:ro
+    environment:
+      BASE_URL: http://app:8080
+    depends_on:
+      app:
+        condition: service_healthy
+    command: run /scripts/k6-load.js
