@@ -44,7 +44,16 @@ docker compose logs -f app
 docker compose down -v                # apagar y borrar el volumen
 ```
 
-El `Dockerfile` es multi-stage (build con Maven + runtime JRE 21) y el `compose` define el healthcheck de la aplicación, así que `depends_on` espera a que la API esté lista y no a que el contenedor exista.
+El `Dockerfile` es multi-stage (build con Maven + runtime JRE 21 de Liberica) y el `compose` define el healthcheck de la aplicación, así que `depends_on` espera a que la API esté lista y no a que el contenedor exista.
+
+En redes restringidas (sin acceso a Docker Hub) hay una variante que reutiliza las imágenes ya presentes en el registro local:
+
+```bash
+mvn -B clean package
+DOCKERFILE=Dockerfile.offline docker compose up -d --build
+```
+
+Los puertos son parametrizables: `APP_PORT` (8080) y `PG_PORT` (5432).
 
 ### Prueba de carga
 
@@ -58,6 +67,25 @@ El escenario (ver `performance/k6-load.js`) mide dos cosas:
 2. **Lectura sostenida**: 20 usuarios virtuales consultando el listado paginado, con umbrales de latencia p95.
 
 Umbrales configurados en el script: `http_req_failed < 1 %`, p95 < 2000 ms en el escenario de conflicto, p95 < 1000 ms en lectura, y `checks > 99 %`. El resumen se guarda en `performance/summary.json`.
+
+Para medir rápido sin k6 ni Docker hay una **sonda en Node sin dependencias** (`performance/concurrency-probe.mjs`):
+
+```bash
+node performance/concurrency-probe.mjs http://localhost:8080 100
+```
+
+### Resultados medidos
+
+Medido en este entorno (Docker: app en contenedor Liberica JRE 21 + PostgreSQL 16, 100 peticiones en paralelo):
+
+| Escenario | Resultado |
+|---|---|
+| 100 peticiones al **mismo** horario de la misma sala | **1 creada (201) + 99 conflictos (409)**, 0 errores 500 → el bloqueo de concurrencia aguanta |
+| 100 peticiones en **horarios distintos** | **100 creadas (201)** → ninguna se pierde ni se bloquea entre sí |
+| Latencia bajo saturación | p50 ~1.9 s, p95 ~2.4 s (las 100 peticiones se serializan en el lock de la sala) |
+| Throughput de escritura | ~40 escrituras/s en el pico con 100 peticiones en paralelo |
+
+> El tiempo alto de la latencia es esperable y es la consecuencia del diseño: el bloqueo pesimista es **por sala**, así que las 100 peticiones se atienden en serie. Con un volumen real de reservas por sala, el cuello de botella aparece ahí; la mejora natural es granular el bloqueo (por sala y franja) o sustituirlo por una restricción de exclusión de rangos en PostgreSQL (`EXCLUDE USING gist`).
 
 ### CI (GitHub Actions)
 
