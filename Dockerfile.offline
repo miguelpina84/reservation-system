@@ -1,0 +1,11 @@
+# Variante para redes restringidas: no descarga nada de Docker Hub.
+# Usa la imagen base de Liberica que ya esta en el registro local y el jar compilado.
+#   mvn -B clean package
+#   docker build -f Dockerfile.offline -t reservation-system:ci .
+FROM bellsoft/liberica-openjdk-alpine:21.0.1-12-cds-x86_64
+RUN addgroup -S app && adduser -S app -G app
+WORKDIR /app
+COPY target/reservation-system-*.jar app.jar
+USER app
+EXPOSE 8080
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75.0", "-jar", "/app/app.jar"]
