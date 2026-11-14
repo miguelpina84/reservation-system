@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   build-and-test:
-    name: Build y tests
+    name: Build y tests (H2, sin Docker)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -30,6 +30,8 @@ jobs:
           cache: maven
 
       - name: Compilar, tests y cobertura
+        # La suite inicial corre contra H2 en memoria (perfil "test"): no requiere
+        # Docker ni PostgreSQL. El camino PostgreSQL se valida en el job de Docker.
         run: mvn -B verify
 
       - name: Publicar reporte JaCoCo
