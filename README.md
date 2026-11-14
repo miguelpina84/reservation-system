@@ -208,9 +208,11 @@ Para las pruebas manuales hay una **colección de Postman** en `Documentacion/` 
 ## Cómo usé la IA
 
 - **Qué le pedí**: la implementación completa del proyecto a partir del enunciado (estructura Maven, entidades, migraciones, servicios, controladores, seguridad, tests) y el README. Escribí yo el diseño y las reglas de negocio: solapamiento estricto, bordes que no se solapan, cancelación lógica, bloqueo pesimista de la sala y el formato de errores.
+- **Qué le pedí después**: los workflows de GitHub Actions, el stack en Docker, la colección de Postman, la prueba de carga con k6 y el `AGENTS.md` del repo. La estructura de esos entregables la diseñé yo; el código repetitive lo acepté revisado.
 - **Qué acepté**: la estructura en capas (controller → service → repository), las anotaciones de Bean Validation, el `@RestControllerAdvice` para los errores y la configuración de Spring Security; la parte repetitiva (DTOs, getters, wiring) la acepté tal cual, revisando nombres y mensajes.
 - **Qué corregí**: el `pom.xml` (el módulo `flyway-database-h2` no existe para esa versión; el soporte de H2 ya viene en `flyway-core`), el manejo de `LazyInitializationException` al mapear entidades fuera de la transacción, la consulta de filtros con parámetros nulos (la sustituí por `Specification` de JPA) y los tests unitarios con mocks mal alineados por el `id` nulo de una entidad no persistida.
-- **Qué revisé y acepté con verificación propia**: la colección de Postman no se dio por buena hasta ejecutarla con `newman` contra la aplicación real (18 peticiones, 29 aserciones, 0 fallos) y el test de concurrencia hasta verlo fallar con dos reservas aceptadas y ajustarlo.
+- **Un bug que solo apareció al correr en Docker**: con PostgreSQL la app moría con `Unsupported Database: PostgreSQL 16`, porque Flyway 10 modularizó el soporte por motor y faltaba `flyway-database-postgresql`. Los tests en H2 no lo detectan; lo encontró el arranque real del contenedor.
+- **Qué revisé y acepté con verificación propia**: la colección de Postman no se dio por buena hasta ejecutarla con `newman` contra la aplicación real (18 peticiones, 29 aserciones, 0 fallos), el test de concurrencia hasta verlo fallar con dos reservas aceptadas y ajustarlo, y la prueba de carga hasta ver los números reales (1 creada + 99 conflictos, 100/100 en horarios distintos) en vez de darlos por buenos.
 - **Qué NO le dejé decidir**: el modelo de datos y las reglas de solapamiento/cancelación, que son lo que más se nota en una revisión de código.
 
 ## Estructura
@@ -222,6 +224,19 @@ src/main/java/com/example/reservation
 ├── repository/ RoomRepository, ReservationRepository (+ Specification para filtros)
 ├── service/    RoomService, ReservationService (+ exceptions)
 └── web/        RoomController, ReservationController, GlobalExceptionHandler, dto/
-src/main/resources/db/migration/V1__init.sql   esquema + salas semilla
-src/test/java/...                               unitarios (Mockito) + integración (MockMvc)
+src/main/resources/
+├── application.yml            H2 en memoria por defecto + usuarios de prueba
+├── application-postgres.yml   perfil opcional para PostgreSQL
+└── db/migration/V1__init.sql  esquema + salas semilla
+src/test/java/...              unitarios (Mockito), integración (MockMvc) y concurrencia
+src/test/resources/application-test.yml   perfil de test: SIEMPRE H2 en memoria
+Documentacion/                colección de Postman + entorno + guía de pruebas
+performance/                  k6-load.js (carga) y concurrency-probe.mjs (sonda Node)
+scripts/smoke-test.sh         smoke test reutilizable (local y CI)
+.github/workflows/            ci.yml (build, tests, cobertura, imagen, smoke) y load-test.yml
+Dockerfile                    imagen multi-stage (Maven + JRE 21 Liberica)
+Dockerfile.offline            variante sin acceso a Docker Hub (jar ya compilado)
+docker-compose.yml            stack de demo: solo la app, con H2
+docker-compose.postgres.yml   override opcional con PostgreSQL
+AGENTS.md                     flujo de trabajo, límites y trampas verificadas
 ```

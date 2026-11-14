@@ -21,6 +21,7 @@ Budget: 2 batches before the first edit. Still unsure after that? Stop and ask O
 - **No live screenshots**; validate with assertions against the real container.
 - No refactors, renames, cleanups or full-file rewrites.
 - **Don't change the API contract** (status codes, JSON shape, field names) without saying so explicitly first — it breaks the Postman collection and the CI smoke test.
+- **Docs travel with the code**: every behaviour change updates its documentation in the SAME commit (README, this file, `Documentacion/`). No "docs later" commit, no undocumented endpoint, no stale command.
 
 ## 3. Validation (minimum that proves the change)
 - **Service logic**: directed test of the touched class (`mvn -Dtest=ClaseTest test`).
