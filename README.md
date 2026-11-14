@@ -163,6 +163,8 @@ Todos los errores devuelven el mismo formato:
 
 `mvn test` corre **11 tests**:
 
+> **No necesitas Docker ni PostgreSQL para correr los tests.** La suite usa el perfil `test`, que fija **H2 en memoria** (ver `src/test/resources/application-test.yml`). Cualquiera puede clonarlo y ejecutar `mvn test` en una máquina limpia. La validación contra PostgreSQL es un paso aparte, en el job de Docker del CI.
+
 | Tipo | Clase | Qué cubre |
 |---|---|---|
 | Unitario (Mockito) | `ReservationServiceTest` | Solapamiento → 409; sin solapamiento → reserva creada |

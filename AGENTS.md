@@ -27,6 +27,7 @@ Budget: 2 batches before the first edit. Still unsure after that? Stop and ask O
 - **HTTP surface**: the MockMvc integration test (`ReservationApiIntegrationTest`).
 - **Concurrency**: `ReservationConcurrencyTest` — one winner, the rest 409. If you touch the reservation lock or the overlap query, run it.
 - **PostgreSQL behaviour**: the H2 tests do NOT prove the PostgreSQL path. Verify in Docker (§5) before claiming it works.
+- **The initial suite always runs on H2** (perfil `test`, `src/test/resources/application-test.yml`): no test may require Docker or PostgreSQL. `mvn test` must pass on a clean machine with no external services.
 - **After deploy, prove it**: one `curl` against the running container. A green build is not proof.
 
 ## 4. Commits and branches
