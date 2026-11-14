@@ -1,0 +1,127 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build y tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Compilar, tests y cobertura
+        run: mvn -B verify
+
+      - name: Publicar reporte JaCoCo
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: target/site/jacoco
+          retention-days: 7
+
+      - name: Publicar resultados de tests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: target/surefire-reports
+          retention-days: 7
+
+  docker-image:
+    name: Imagen Docker y smoke test
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Construir imagen
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: reservation-system:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Levantar PostgreSQL
+        run: docker compose up -d postgres
+        # espera a que el contenedor de PostgreSQL acepte conexiones
+
+      - name: Levantar la aplicación en Docker
+        run: |
+          docker compose up -d app
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8080/actuator/health | grep -q UP; then
+              echo "Aplicacion lista"
+              break
+            fi
+            sleep 2
+          done
+          curl -fsS http://localhost:8080/actuator/health
+
+      - name: Smoke test de la API
+        run: |
+          set -euo pipefail
+          # Crear sala (requiere credenciales)
+          curl -fsS -u admin:admin123 -H 'Content-Type: application/json' \
+            -d '{"name":"Sala CI","capacity":8}' http://localhost:8080/api/rooms > /tmp/room.json
+          ROOM_ID=$(python3 -c "import json;print(json.load(open('/tmp/room.json'))['id'])")
+
+          # Crear reserva
+          curl -fsS -u user:user123 -H 'Content-Type: application/json' \
+            -d "{\"roomId\":$ROOM_ID,\"responsable\":\"CI\",\"startTime\":\"2033-03-01T10:00:00\",\"endTime\":\"2033-03-01T11:00:00\"}" \
+            http://localhost:8080/api/reservations > /tmp/res.json
+
+          # El mismo horario debe devolver 409
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' -u user:user123 -H 'Content-Type: application/json' \
+            -d "{\"roomId\":$ROOM_ID,\"responsable\":\"CI\",\"startTime\":\"2033-03-01T10:00:00\",\"endTime\":\"2033-03-01T11:00:00\"}" \
+            http://localhost:8080/api/reservations)
+          test "$STATUS" = "409"
+
+          # Una escritura sin credenciales debe devolver 401
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' \
+            -d '{"name":"Sala Sin Auth","capacity":4}' http://localhost:8080/api/rooms)
+          test "$STATUS" = "401"
+
+          echo "Smoke test OK"
+
+      - name: Logs de la aplicación
+        if: failure()
+        run: docker compose logs --no-color app postgres
+
+      - name: Apagar contenedores
+        if: always()
+        run: docker compose down -v
