@@ -5,4 +5,4 @@
  |_| \_\___||___/\___|_|    \_/ \__,_|\__|_|\___/|_| |_| |____/ \__, |___/\__\___|_| |_| |_|
                                                                 |___/                       
 ${application.title} ${application.version}
-Powered by Spring Boot ${spring-boot.version}
+Java @app.java.version@ | Spring Boot ${spring-boot.version}
