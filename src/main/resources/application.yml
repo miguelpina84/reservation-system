@@ -2,6 +2,10 @@ spring:
   application:
     name: reservation-system
 
+  banner:
+    # Banner de arranque propio (ASCII art) en lugar del banner por defecto de Spring Boot
+    location: classpath:banner_reservatio-system_test.txt
+
   datasource:
     url: jdbc:h2:mem:reservationdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     driver-class-name: org.h2.Driver
@@ -22,7 +26,7 @@ spring:
     baseline-on-migrate: true
 
 server:
-  port: 8080
+  port: 2222
   error:
     include-message: always
 
