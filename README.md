@@ -1,16 +1,18 @@
 # reservation-system
 
-API REST para reservar salas de reuniones. Java 17+ / Spring Boot 3.3 / H2 (por defecto) o PostgreSQL / Flyway / Spring Security (HTTP Basic).
+API REST para reservar salas de reuniones. Java 17+ / Spring Boot 3.3 / H2 / Flyway / Spring Security (HTTP Basic).
+
+> **Base de datos: H2 en memoria, sin configuración.** La demo (`mvn spring-boot:run`), los tests (`mvn test`) y el stack de Docker por defecto usan **H2**: no hace falta instalar ni levantar ninguna base de datos. PostgreSQL está soportado por el perfil `postgres` y se usa en un único escenario opcional (ver más abajo), no como camino normal.
 
 ## Cómo ejecutarlo
 
-Requisitos: JDK 17 o superior y Maven 3.9+.
+Requisitos: JDK 17 o superior y Maven 3.9+. Nada más.
 
 ```bash
-# 1. Tests (11 tests: 4 unitarios, 6 de integracion MockMvc, 1 de concurrencia)
+# 1. Tests (11 tests: 4 unitarios, 6 de integracion MockMvc, 1 de concurrencia) - contra H2
 mvn test
 
-# 2. Arranque (H2 en memoria, datos semilla de la migracion V1)
+# 2. Arranque de la demo (H2 en memoria, datos semilla de la migracion V1)
 mvn spring-boot:run
 
 # 3. o bien, empaquetado
@@ -26,22 +28,13 @@ El build trae JaCoCo integrado; el reporte se genera en `target/site/jacoco/inde
 
 Cobertura actual: **87.2 % de lineas, 83.8 % de instrucciones y 73.1 % de ramas**.
 
-### Con PostgreSQL
+### En Docker (H2, sin base de datos externa)
 
 ```bash
-docker compose up -d postgres
-mvn spring-boot:run -Dspring-boot.run.profiles=postgres
-```
-
-o con variables de entorno: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`.
-
-### Todo en Docker (PostgreSQL + aplicación)
-
-```bash
-docker compose up -d --build          # PostgreSQL + API en http://localhost:8080
+docker compose up -d --build          # solo la API, con H2 en memoria
 docker compose ps                     # esperar a que app reporte (healthy)
 docker compose logs -f app
-docker compose down -v                # apagar y borrar el volumen
+docker compose down -v                # apagar
 ```
 
 El `Dockerfile` es multi-stage (build con Maven + runtime JRE 21 de Liberica) y el `compose` define el healthcheck de la aplicación, así que `depends_on` espera a que la API esté lista y no a que el contenedor exista.
@@ -53,7 +46,21 @@ mvn -B clean package
 DOCKERFILE=Dockerfile.offline docker compose up -d --build
 ```
 
-Los puertos son parametrizables: `APP_PORT` (8080) y `PG_PORT` (5432).
+Los puertos son parametrizables: `APP_PORT` (8080) y `PG_PORT` (5432, solo en la variante con PostgreSQL).
+
+### PostgreSQL (opcional)
+
+No hace falta para la demo ni para los tests. Existe para verificar que la migración de Flyway, escrita en SQL estándar, también funciona fuera de H2:
+
+```bash
+# Stack completo con PostgreSQL
+docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d --build
+
+# o la app en local contra un PostgreSQL propio
+mvn spring-boot:run -Dspring-boot.run.profiles=postgres
+```
+
+Variables: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`.
 
 ### Prueba de carga
 
@@ -76,7 +83,7 @@ node performance/concurrency-probe.mjs http://localhost:8080 100
 
 ### Resultados medidos
 
-Medido en este entorno (Docker: app en contenedor Liberica JRE 21 + PostgreSQL 16, 100 peticiones en paralelo):
+Medido contra el stack con PostgreSQL 16 (la demo y los tests usan H2; aquí se quiso medir contra un motor real), 100 peticiones en paralelo:
 
 | Escenario | Resultado |
 |---|---|
@@ -91,8 +98,8 @@ Medido en este entorno (Docker: app en contenedor Liberica JRE 21 + PostgreSQL 1
 
 | Workflow | Qué hace |
 |---|---|
-| `.github/workflows/ci.yml` | En cada push y PR: `mvn verify` (tests + JaCoCo), publica el reporte de cobertura como artefacto, construye la imagen Docker y hace un **smoke test** contra el contenedor con PostgreSQL (crear sala, crear reserva, 409 por horario ocupado, 401 sin credenciales). |
-| `.github/workflows/load-test.yml` | Ejecución manual (`workflow_dispatch`) o programada: levanta el stack en Docker y corre la prueba de k6, publicando `summary.json` como artefacto. |
+| `.github/workflows/ci.yml` | En cada push y PR: `mvn verify` (tests contra H2 + JaCoCo), publica el reporte de cobertura como artefacto, construye la imagen Docker y hace **dos smoke tests** contra el contenedor: el de la demo (H2) y el de la variante con PostgreSQL. El script es `scripts/smoke-test.sh` (crear sala, crear reserva, 409 por horario ocupado, 401 sin credenciales). |
+| `.github/workflows/load-test.yml` | Ejecución manual (`workflow_dispatch`) o programada: levanta el stack con PostgreSQL y corre la prueba de k6, publicando `summary.json` como artefacto. |
 
 ### Credenciales
 

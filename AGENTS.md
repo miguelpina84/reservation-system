@@ -26,7 +26,7 @@ Budget: 2 batches before the first edit. Still unsure after that? Stop and ask O
 - **Service logic**: directed test of the touched class (`mvn -Dtest=ClaseTest test`).
 - **HTTP surface**: the MockMvc integration test (`ReservationApiIntegrationTest`).
 - **Concurrency**: `ReservationConcurrencyTest` — one winner, the rest 409. If you touch the reservation lock or the overlap query, run it.
-- **PostgreSQL behaviour**: the H2 tests do NOT prove the PostgreSQL path. Verify in Docker (§5) before claiming it works.
+- **PostgreSQL behaviour**: the H2 tests do NOT prove the PostgreSQL path. PostgreSQL is optional (the demo and the suite are H2); verify in Docker (§5) only when the schema or the SQL changes.
 - **The initial suite always runs on H2** (perfil `test`, `src/test/resources/application-test.yml`): no test may require Docker or PostgreSQL. `mvn test` must pass on a clean machine with no external services.
 - **After deploy, prove it**: one `curl` against the running container. A green build is not proof.
 
@@ -50,11 +50,16 @@ mvn -B test -Dtest=ReservationConcurrencyTest
 # Package ALWAYS with clean
 mvn -B clean package -DskipTests
 
-# Stack in Docker (PostgreSQL + API). APP_PORT/PG_PORT avoid clashes with other services on this machine
-$env:DOCKERFILE='Dockerfile.offline'; $env:APP_PORT='18080'; $env:PG_PORT='15432'
-docker compose up -d --build postgres app
+# Stack in Docker (demo path: H2 in memory, no external DB). APP_PORT avoids clashes with other services on this machine
+$env:DOCKERFILE='Dockerfile.offline'; $env:APP_PORT='18080'
+docker compose up -d --build app
 docker compose ps            # wait for (healthy)
+bash scripts/smoke-test.sh http://localhost:18080
 docker compose down -v
+
+# Optional: the same stack on PostgreSQL (only to verify the migration on a second engine)
+$env:PG_PORT='15432'
+docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d --build app
 
 # API proof against the running container
 curl.exe -s http://localhost:18080/actuator/health
@@ -73,7 +78,8 @@ node performance/concurrency-probe.mjs http://localhost:18080 100
 
 ## 6. Traps (verified, do not rediscover)
 - **Flyway 10 modularized the DB support**: `flyway-core` only covers H2. PostgreSQL needs `flyway-database-postgresql` in `pom.xml`. Without it the app dies with `Unsupported Database: PostgreSQL 16`.
-- **H2 ≠ PostgreSQL**: a green `mvn test` on H2 says nothing about the PostgreSQL path. Always check the schema in the Docker stack (that is how the Flyway bug above was found).
+- **H2 is the default everywhere**: demo, tests and the default Docker stack. Do not introduce a PostgreSQL/MySQL dependency for the demo or the test suite; the PostgreSQL variant exists only to check that the Flyway migration also works on a second engine.
+- **H2 ≠ PostgreSQL**: a green `mvn test` on H2 says nothing about the PostgreSQL path. When the schema changes, re-check the `docker-compose.postgres.yml` stack — that is how the Flyway bug above was found.
 - **The pessimistic lock is per room**, so all reservations of one room serialize: ~40 writes/s in the measured peak, p95 ~2.4 s with 100 parallel requests. Correctness first; granularity is a known future improvement (per-slot lock or `EXCLUDE USING gist`).
 - **Overlap is strict**: `startExistente < endNuevo && endExistente > startNuevo`. Touching borders do NOT collide. A reservation ending 10:00 and one starting 10:00 are compatible.
 - **Cancel is logical** (`status = CANCELADA`), it never deletes; cancelling twice returns 409.
