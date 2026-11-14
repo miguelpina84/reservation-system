@@ -20,7 +20,7 @@ mvn clean package
 java -jar target/reservation-system-0.0.1-SNAPSHOT.jar
 ```
 
-La app escucha en `http://localhost:8080`.
+La app escucha en `http://localhost:8080` y arranca con el banner propio del proyecto (`src/main/resources/banner_reservatio-system_test.txt`, referenciado en `spring.banner.location`), no con el de Spring Boot por defecto.
 
 ### Cobertura
 
@@ -225,8 +225,9 @@ src/main/java/com/example/reservation
 ├── service/    RoomService, ReservationService (+ exceptions)
 └── web/        RoomController, ReservationController, GlobalExceptionHandler, dto/
 src/main/resources/
-├── application.yml            H2 en memoria por defecto + usuarios de prueba
+├── application.yml            H2 en memoria por defecto + usuarios de prueba + banner propio
 ├── application-postgres.yml   perfil opcional para PostgreSQL
+├── banner_reservatio-system_test.txt   banner de arranque (ASCII art)
 └── db/migration/V1__init.sql  esquema + salas semilla
 src/test/java/...              unitarios (Mockito), integración (MockMvc) y concurrencia
 src/test/resources/application-test.yml   perfil de test: SIEMPRE H2 en memoria
