@@ -1,6 +1,15 @@
 # Compiled class file
 *.class
 
+# Build
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
 # Log file
 *.log
 
