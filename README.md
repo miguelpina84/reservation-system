@@ -20,7 +20,14 @@ mvn clean package
 java -jar target/reservation-system-0.0.1-SNAPSHOT.jar
 ```
 
-La app escucha en `http://localhost:8080` y arranca con el banner propio del proyecto (`src/main/resources/banner_reservatio-system_test.txt`, referenciado en `spring.banner.location`), no con el de Spring Boot por defecto.
+La app escucha en `http://localhost:8080` y arranca con el banner propio del proyecto (`src/main/resources/banner_reservatio-system_test.txt`, referenciado en `spring.banner.location`):
+
+```
+reservation-system 0.0.1-SNAPSHOT
+Java 17 | Spring Boot 3.3.5
+```
+
+La versión de Java del banner sale del `pom.xml` (`<java.version>17</java.version>`), no está escrita a mano: el banner es el único recurso que Maven filtra, con la propiedad `app.java.version`. Los marcadores `${application.title}` y `${spring-boot.version}` los resuelve Spring Boot al arrancar.
 
 ### Cobertura
 
