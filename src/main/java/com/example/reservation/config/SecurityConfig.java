@@ -78,6 +78,8 @@ public class SecurityConfig {
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/rooms/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/reservations/**").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
+                        // documentacion OpenAPI y Swagger UI: publicas para poder probar la API
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**").permitAll()
                         // escritura autenticada
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/rooms/**").authenticated()
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/reservations/**").authenticated()

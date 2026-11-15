@@ -147,6 +147,21 @@ class ReservationApiIntegrationTest {
     }
 
     @Test
+    @DisplayName("la documentacion OpenAPI es publica y describe los endpoints")
+    void openApiDocsArePublicAndDescribeTheApi() throws Exception {
+        mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.info.title").value("API de reservas de salas"))
+                .andExpect(jsonPath("$.paths['/api/rooms']").exists())
+                .andExpect(jsonPath("$.paths['/api/reservations']").exists())
+                .andExpect(jsonPath("$.paths['/api/reservations/{id}']").exists())
+                .andExpect(jsonPath("$.components.securitySchemes.basicAuth.scheme").value("basic"));
+
+        mockMvc.perform(get("/swagger-ui/index.html"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     @DisplayName("cancelar reserva requiere autenticación y libera el horario")
     void cancelReservation() throws Exception {
         LocalDateTime start = LocalDateTime.of(2030, 7, 1, 15, 0);
