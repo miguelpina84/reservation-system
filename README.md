@@ -4,6 +4,39 @@ API REST para reservar salas de reuniones. Java 17+ / Spring Boot 3.3 / H2 / Fly
 
 > **Base de datos: H2 en memoria, sin configuración.** La demo (`mvn spring-boot:run`), los tests (`mvn test`) y el stack de Docker por defecto usan **H2**: no hace falta instalar ni levantar ninguna base de datos. PostgreSQL está soportado por el perfil `postgres` y se usa en un único escenario opcional (ver más abajo), no como camino normal.
 
+## Prueba rápida en 2 minutos
+
+```bash
+# 1. Arrancar (H2 en memoria, datos semilla)
+mvn spring-boot:run
+
+# 2. En otra terminal: la API responde
+curl http://localhost:8080/actuator/health          # {"status":"UP"}
+curl http://localhost:8080/api/rooms                # salas semilla (lectura pública)
+
+# 3. Crear una sala (escritura: exige credenciales)
+curl -u admin:admin123 -H 'Content-Type: application/json' \
+  -d '{"name":"Sala Tesla","capacity":6}' http://localhost:8080/api/rooms
+
+# 4. Crear una reserva
+curl -u user:user123 -H 'Content-Type: application/json' \
+  -d '{"roomId":1,"responsable":"Miguel","startTime":"2030-01-01T10:00:00","endTime":"2030-01-01T11:00:00"}' \
+  http://localhost:8080/api/reservations
+
+# 5. La MISMA franja de nuevo -> 409 (la sala ya esta ocupada)
+curl -i -u user:user123 -H 'Content-Type: application/json' \
+  -d '{"roomId":1,"responsable":"Otro","startTime":"2030-01-01T10:00:00","endTime":"2030-01-01T11:00:00"}' \
+  http://localhost:8080/api/reservations
+
+# 6. Sin credenciales -> 401
+curl -i -H 'Content-Type: application/json' \
+  -d '{"name":"Sala Sin Auth","capacity":4}' http://localhost:8080/api/rooms
+```
+
+En Windows PowerShell, los `curl` con cuerpo JSON en línea se descuadran por las comillas: usa un archivo (`-d "@archivo.json"`) o la colección de Postman de abajo.
+
+Para probarlo **sin escribir nada a mano**: importa `Documentacion/reservation-system.postman_collection.json` en Postman (trae 18 peticiones con sus aserciones) o ejecuta la misma colección con `newman` (ver `Documentacion/README.md`).
+
 ## Cómo ejecutarlo
 
 Requisitos: JDK 17 o superior y Maven 3.9+. Nada más.
