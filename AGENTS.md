@@ -66,6 +66,9 @@ docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d --buil
 curl.exe -s http://localhost:18080/actuator/health
 curl.exe -s http://localhost:18080/api/rooms
 
+# Swagger UI / OpenAPI (public)
+curl.exe -s http://localhost:18080/v3/api-docs
+
 # Postman collection (18 requests, 29 assertions)
 cd Documentacion; npx.cmd -y newman@6 run reservation-system.postman_collection.json -e postman_environment_local.json --env-var baseUrl=http://localhost:18080
 
@@ -74,7 +77,7 @@ node performance/concurrency-probe.mjs http://localhost:18080 100
 ```
 
 - **`package` SIEMPRE con `clean`**: the Dockerfile copies `target/*.jar`, so stale classes of a deleted file can ship inside the JAR.
-- **Ports 8080 and 5432 are taken on this machine** (`AgentService` and Docker). Always use `APP_PORT` / `PG_PORT`.
+- **Ports 8080 and 5432 are taken on this machine** (`AgentService` and Docker). The app therefore listens on **2222** (`server.port` in `application.yml`); in Docker, `APP_PORT` (2222 by default) maps the host port to it. Use `APP_PORT` / `PG_PORT` to avoid clashes.
 - **PowerShell + `curl.exe` drops quotes**: use `--data-binary "@archivo.json"`; a JSON body inline arrives malformed and yields a misleading 400.
 
 ## 6. Traps (verified, do not rediscover)
@@ -87,4 +90,5 @@ node performance/concurrency-probe.mjs http://localhost:18080 100
 - **Docker Hub is very slow from here**: prefer the images already in the local registry (`bellsoft/liberica-openjdk-alpine:21.0.1-12-cds-x86_64`, `postgres:16-alpine`). `Dockerfile.offline` builds from the pre-built JAR without pulling anything; `apk add` does NOT work (no network to the Alpine repos).
 - **A failure with 403 on every endpoint is not the app**: another container/proxy was answering on that port. Check `Get-NetTCPConnection -LocalPort <p>` before debugging the API.
 - **The `Documentacion/` Postman collection is the manual contract**: if you change a status code or a field, update the collection and its assertions in the same commit.
+- **OpenAPI is part of the contract too**: `springdoc` publishes `/v3/api-docs` and `/swagger-ui.html` (public). If you add or change an endpoint, update its `@Operation`/`@ApiResponse` annotations and the `ReservationApiIntegrationTest` case that asserts the spec.
 - **Resource filtering uses `@`, not `${}`**: the Spring Boot parent overrides the default delimiters of `maven-resources-plugin`, so `${...}` is NOT substituted at build time (it is left for Spring to resolve at runtime). The banner is the only filtered resource and uses `@app.java.version@` for the Java version coming from the `pom.xml`.
