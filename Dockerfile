@@ -13,5 +13,5 @@ RUN addgroup -S app && adduser -S app -G app
 WORKDIR /app
 COPY --from=build /build/target/reservation-system-*.jar app.jar
 USER app
-EXPOSE 8080
+EXPOSE 2222
 ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75.0", "-jar", "/app/app.jar"]

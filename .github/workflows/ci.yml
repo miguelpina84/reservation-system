@@ -81,13 +81,13 @@ jobs:
       - name: Smoke test en Docker con H2 (camino de la demo)
         run: |
           docker compose up -d app
-          bash scripts/smoke-test.sh http://localhost:8080
+          bash scripts/smoke-test.sh http://localhost:2222
 
       - name: Smoke test en Docker con PostgreSQL (verificacion opcional del esquema)
         run: |
           docker compose down -v
           docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d app
-          bash scripts/smoke-test.sh http://localhost:8080
+          bash scripts/smoke-test.sh http://localhost:2222
 
       - name: Logs de la aplicación
         if: failure()

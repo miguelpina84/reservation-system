@@ -13,7 +13,7 @@
     ]
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "baseUrl", "value": "http://localhost:2222" },
     { "key": "adminUser", "value": "admin" },
     { "key": "adminPass", "value": "admin123" },
     { "key": "user", "value": "user" },

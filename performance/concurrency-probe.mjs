@@ -7,7 +7,7 @@
  * Escenario 1 - mismo horario: 1 debe ganar (201) y el resto recibir 409.
  * Escenario 2 - horarios distintos: todos deben crear (201) y se mide la latencia.
  */
-const BASE_URL = process.argv[2] || process.env.BASE_URL || 'http://localhost:8080';
+const BASE_URL = process.argv[2] || process.env.BASE_URL || 'http://localhost:2222';
 const CONCURRENCIA = Number(process.argv[3] || 100);
 const AUTH = 'Basic ' + Buffer.from('admin:admin123').toString('base64');
 

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Smoke test de la API contra el contenedor en ejecucion.
-#   bash scripts/smoke-test.sh [http://localhost:8080]
+#   bash scripts/smoke-test.sh [http://localhost:2222]
 # Espera a que la app responda y comprueba el camino feliz y los errores clave.
 set -euo pipefail
 
-BASE_URL="${1:-http://localhost:8080}"
+BASE_URL="${1:-http://localhost:2222}"
 AUTH_ADMIN="${AUTH_ADMIN:-admin:admin123}"
 AUTH_USER="${AUTH_USER:-user:user123}"
 

@@ -10,12 +10,12 @@ services:
       dockerfile: ${DOCKERFILE:-Dockerfile}
     image: reservation-system:ci
     ports:
-      - "${APP_PORT:-8080}:8080"
+      - "${APP_PORT:-2222}:2222"
     environment:
       # Sin perfil de postgres => la app usa H2 en memoria (src/main/resources/application.yml).
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-}
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q UP"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:2222/actuator/health | grep -q UP"]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -28,7 +28,7 @@ services:
     volumes:
       - ./performance:/scripts:ro
     environment:
-      BASE_URL: http://app:8080
+      BASE_URL: http://app:2222
     depends_on:
       app:
         condition: service_healthy

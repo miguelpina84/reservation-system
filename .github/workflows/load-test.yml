@@ -27,7 +27,7 @@ jobs:
         run: |
           docker compose up -d --build app
           for i in $(seq 1 60); do
-            if curl -fsS http://localhost:8080/actuator/health | grep -q UP; then
+            if curl -fsS http://localhost:2222/actuator/health | grep -q UP; then
               echo "Aplicacion lista"
               exit 0
             fi
@@ -42,7 +42,7 @@ jobs:
           docker run --rm \
             --network host \
             -v "$PWD/performance:/scripts:ro" \
-            -e BASE_URL=http://localhost:8080 \
+            -e BASE_URL=http://localhost:2222 \
             grafana/k6:0.53.0 run --quiet /scripts/k6-load.js
 
       - name: Publicar resumen de la prueba
