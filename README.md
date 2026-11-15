@@ -2,7 +2,7 @@
 
 API REST para reservar salas de reuniones. Java 17+ / Spring Boot 3.3 / H2 / Flyway / Spring Security (HTTP Basic).
 
-> **Base de datos: H2 en memoria, sin configuración.** La demo (`mvn spring-boot:run`), los tests (`mvn test`) y el stack de Docker por defecto usan **H2**: no hace falta instalar ni levantar ninguna base de datos. PostgreSQL está soportado por el perfil `postgres` y se usa en un único escenario opcional (ver más abajo), no como camino normal.
+> **Base de datos: H2 con Flyway** (el enunciado pedía "PostgreSQL **o** H2 con migraciones"; aquí se eligió H2). La demo (`mvn spring-boot:run`), los tests (`mvn test`) y el stack de Docker por defecto usan **H2**: no hace falta instalar ni levantar ninguna base de datos. PostgreSQL está soportado por el perfil `postgres` únicamente como verificación opcional de que la misma migración funciona en un segundo motor (ver "Base de datos: H2").
 
 ## Prueba rápida en 2 minutos
 
@@ -101,12 +101,26 @@ DOCKERFILE=Dockerfile.offline docker compose up -d --build
 
 Los puertos son parametrizables: `APP_PORT` (2222 en el host; 8080 esta ocupado en esta maquina) y `PG_PORT` (5432, solo en la variante con PostgreSQL).
 
-### PostgreSQL (opcional)
+### Base de datos: H2 (el enunciado pide "PostgreSQL o H2")
 
-No hace falta para la demo ni para los tests. Existe para verificar que la migración de Flyway, escrita en SQL estándar, también funciona fuera de H2:
+El requisito 4 dice *Base de datos PostgreSQL **o** H2 con migraciones (Flyway o Liquibase)*. Aquí se eligió **H2 con Flyway**, y es la base de datos de todo el proyecto:
+
+| | |
+|---|---|
+| **Motor** | H2 en memoria (`jdbc:h2:mem:reservationdb`) |
+| **Migraciones** | Flyway 10, archivo único `src/main/resources/db/migration/V1__init.sql` |
+| **Quién lo usa** | La demo (`mvn spring-boot:run`), los tests (`mvn test`, perfil `test`) y el stack de Docker por defecto |
+| **Cómo se aplica** | Al arrancar: `Migrating schema "PUBLIC" to version "1 - init"` → `Successfully applied 1 migration` |
+
+Dos detalles importantes:
+
+- **El esquema lo crea la migración, no Hibernate.** `spring.jpa.hibernate.ddl-auto: validate` solo verifica que el modelo JPA y el esquema coincidan; si divergen, la app no arranca. El versionado del esquema es de Flyway.
+- **H2 en memoria reinicia los datos.** Al parar la app se pierde lo creado y vuelve la semilla de 3 salas. Para datos que sobrevivan al reinicio, usa la variante con PostgreSQL de abajo.
+
+**PostgreSQL queda como verificación opcional**, no como camino de uso: el mismo archivo de migración (escrito en SQL compatible con ambos motores) se ejecuta también contra PostgreSQL 16 para comprobar que el esquema funciona fuera de H2. Es un plus de robustez del enunciado, no una dependencia: nadie que clone el repo necesita PostgreSQL para ejecutar los tests ni la demo.
 
 ```bash
-# Stack completo con PostgreSQL
+# Stack completo con PostgreSQL (opcional)
 docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d --build
 
 # o la app en local contra un PostgreSQL propio
@@ -239,7 +253,7 @@ Para las pruebas manuales hay una **colección de Postman** en `Documentacion/` 
 ## Decisiones que tomé
 
 - **Java 17 + Spring Boot 3.3** (target 17 para no atar el proyecto a la JDK del entorno; probado con JDK 21).
-- **H2 en memoria por defecto y PostgreSQL con perfil `postgres`**: el enunciado acepta cualquiera de los dos. Las migraciones son SQL compatible con ambos, así que el mismo esquema sirve para los dos motores.
+- **H2 en memoria por defecto y PostgreSQL con perfil `postgres`**: el enunciado acepta cualquiera de los dos y se eligió H2. Las migraciones son SQL compatible con ambos, así que el mismo esquema sirve para los dos motores.
 - **Flyway** en lugar de `ddl-auto: create`: el esquema se versiona y `hibernate.ddl-auto: validate` garantiza que el modelo JPA y la migración no se separen.
 - **HTTP Basic** en lugar de JWT (el enunciado permite cualquiera de los dos): Basic cumple el requisito de "los endpoints que crean o cancelan requieren autenticación" sin introducir una dependencia de emisión/validación de tokens. Los usuarios se configuran en `application.yml` y se autentican en memoria; el `SecurityFilterChain` es el punto de extensión natural para sustituir por LDAP/OIDC cuando exista un IdP real.
 - **Solapamiento = solapamiento estricto**: dos reservas se solapan si `inicioExistente < finNuevo && finExistente > inicioNuevo`. Una reserva que termina a las 10:00 y otra que empieza a las 10:00 **no** se solapan (los bordes no se consideran ocupados).
